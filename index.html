@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JSONCraft — Format, Validate & Query JSON</title>
+<meta name="description" content="Free JSON formatter, validator, minifier and JSONPath tester. Paste your JSON, instantly format it, validate it, and query with JSONPath expressions.">
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3350;
+    --accent: #6c63ff;
+    --accent2: #00d4aa;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --error: #ff4f4f;
+    --success: #00d4aa;
+    --warn: #fbbf24;
+    --font: 'Inter', system-ui, -apple-system, sans-serif;
+    --mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
+
+  /* NAV */
+  nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 100; }
+  .logo { font-weight: 700; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; }
+  .logo span { color: var(--accent); }
+  .nav-links { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .nav-links a { color: var(--text2); text-decoration: none; font-size: 0.8rem; padding: 4px 8px; border-radius: 6px; transition: color 0.2s; white-space: nowrap; }
+  .nav-links a:hover { color: var(--text); background: var(--surface2); }
+
+  /* HERO */
+  .hero { text-align: center; padding: 40px 20px 24px; }
+  .hero h1 { font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 800; margin-bottom: 10px; }
+  .hero h1 em { color: var(--accent); font-style: normal; }
+  .hero p { color: var(--text2); font-size: 1rem; max-width: 560px; margin: 0 auto 20px; }
+
+  /* TABS */
+  .tabs { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; padding: 0 20px 20px; }
+  .tab { background: var(--surface); border: 1px solid var(--border); color: var(--text2); padding: 8px 18px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 500; transition: all 0.2s; }
+  .tab:hover { border-color: var(--accent); color: var(--text); }
+  .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  /* MAIN LAYOUT */
+  .main { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 0 20px 40px; max-width: 1400px; margin: 0 auto; }
+  @media (max-width: 768px) { .main { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); gap: 8px; flex-wrap: wrap; }
+  .panel-title { font-size: 0.85rem; font-weight: 600; color: var(--text2); display: flex; align-items: center; gap: 6px; }
+  .panel-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  textarea, .output-box {
+    width: 100%; height: 380px; background: var(--surface2); color: var(--text);
+    font-family: var(--mono); font-size: 0.8rem; line-height: 1.6;
+    border: none; outline: none; padding: 16px; resize: vertical;
+    tab-size: 2;
+  }
+  .output-box { overflow: auto; white-space: pre-wrap; word-break: break-all; }
+
+  /* BUTTONS */
+  .btn { padding: 6px 14px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-size: 0.78rem; font-weight: 500; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { background: #5a52e0; border-color: #5a52e0; }
+  .btn.success { background: var(--success); border-color: var(--success); color: #000; }
+
+  /* STATUS BAR */
+  .status-bar { padding: 8px 16px; font-size: 0.78rem; font-weight: 500; border-top: 1px solid var(--border); min-height: 36px; display: flex; align-items: center; gap: 8px; }
+  .status-bar.ok { color: var(--success); }
+  .status-bar.error { color: var(--error); }
+  .status-bar.warn { color: var(--warn); }
+  .status-bar.info { color: var(--text2); }
+
+  /* JSONPATH SECTION */
+  .path-section { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: center; }
+  .path-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; padding: 7px 12px; color: var(--text); font-family: var(--mono); font-size: 0.82rem; outline: none; }
+  .path-input:focus { border-color: var(--accent); }
+
+  /* STATS */
+  .stats { display: flex; gap: 16px; padding: 10px 16px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+  .stat { font-size: 0.75rem; color: var(--text2); }
+  .stat strong { color: var(--text); }
+
+  /* INDENT CONTROL */
+  .indent-row { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; color: var(--text2); }
+  .indent-select { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 4px 8px; border-radius: 6px; font-size: 0.78rem; }
+
+  /* SYNTAX HIGHLIGHT */
+  .tok-key { color: #79c0ff; }
+  .tok-str { color: #a5d6ff; }
+  .tok-num { color: #ffa657; }
+  .tok-bool { color: #ff7b72; }
+  .tok-null { color: #ff7b72; }
+
+  /* PANEL PANE */
+  .pane { display: none; }
+  .pane.active { display: block; }
+
+  /* TOOLS BAR */
+  .tools-bar { display: flex; gap: 6px; padding: 8px 16px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+
+  /* DIFF */
+  .diff-container { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 16px; }
+  .diff-container textarea { height: 300px; border-radius: 8px; border: 1px solid var(--border); }
+
+  /* SCHEMA */
+  .schema-tip { font-size: 0.78rem; color: var(--text2); padding: 8px 16px; }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--accent); color: #fff; padding: 10px 20px; border-radius: 8px; font-size: 0.85rem; font-weight: 500; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
+  .toast.show { opacity: 1; }
+
+  /* BADGE */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.7rem; font-weight: 600; }
+  .badge.pro { background: var(--accent); color: #fff; }
+  .badge.free { background: var(--success); color: #000; }
+
+  /* FOOTER */
+  footer { text-align: center; padding: 32px 20px; color: var(--text2); font-size: 0.8rem; border-top: 1px solid var(--border); }
+  footer a { color: var(--accent); text-decoration: none; }
+  footer .suite { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
+  footer .suite a { color: var(--text2); }
+  footer .suite a:hover { color: var(--text); }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">{ <span>JSON</span>Craft }</div>
+  <div class="nav-links">
+    <a href="https://shiffasultan-collab.github.io/gitdigest-static/">GitDigest</a>
+    <a href="https://shiffasultan-collab.github.io/commitcraft/">CommitCraft</a>
+    <a href="https://shiffasultan-collab.github.io/prcraft/">PRCraft</a>
+    <a href="https://shiffasultan-collab.github.io/readmecraft/">ReadmeCraft</a>
+    <a href="https://shiffasultan-collab.github.io/cronhelper/">CronHelper</a>
+    <a href="https://shiffasultan-collab.github.io/envdiff/">EnvDiff</a>
+    <a href="https://shiffasultan-collab.github.io/regexpal/">RegexPal</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <h1>Format, Validate &amp; Query <em>JSON</em></h1>
+  <p>The all-in-one JSON toolkit for developers. Format, minify, validate, query with JSONPath, and generate schemas — all client-side, nothing sent to any server.</p>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('format')">🎨 Format</button>
+  <button class="tab" onclick="switchTab('validate')">✅ Validate</button>
+  <button class="tab" onclick="switchTab('path')">🔍 JSONPath</button>
+  <button class="tab" onclick="switchTab('diff')">↔ Diff</button>
+  <button class="tab" onclick="switchTab('schema')">📋 Schema</button>
+  <button class="tab" onclick="switchTab('minify')">📦 Minify</button>
+</div>
+
+<div class="main">
+  <!-- LEFT: INPUT -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">📥 Input JSON</div>
+      <div class="panel-actions">
+        <div class="indent-row">
+          Indent:
+          <select class="indent-select" id="indentSelect" onchange="runFormat()">
+            <option value="2">2 spaces</option>
+            <option value="4">4 spaces</option>
+            <option value="tab">tab</option>
+          </select>
+        </div>
+        <button class="btn" onclick="loadSample()">Sample</button>
+        <button class="btn" onclick="clearInput()">Clear</button>
+      </div>
+    </div>
+    <textarea id="inputArea" placeholder='Paste your JSON here...\n\n{"name":"JSONCraft","awesome":true}' oninput="onInput()" spellcheck="false"></textarea>
+    <div class="stats" id="inputStats">
+      <span class="stat">Size: <strong id="sizeVal">0 B</strong></span>
+      <span class="stat">Lines: <strong id="linesVal">0</strong></span>
+      <span class="stat">Keys: <strong id="keysVal">0</strong></span>
+    </div>
+  </div>
+
+  <!-- RIGHT: OUTPUT -->
+  <div class="panel">
+    <!-- FORMAT PANE -->
+    <div id="pane-format" class="pane active">
+      <div class="panel-header">
+        <div class="panel-title">✨ Formatted Output</div>
+        <div class="panel-actions">
+          <button class="btn primary" onclick="runFormat()">Format</button>
+          <button class="btn" onclick="copyOutput()">Copy</button>
+          <button class="btn" onclick="downloadOutput()">Download</button>
+        </div>
+      </div>
+      <div class="output-box" id="formatOutput"></div>
+      <div class="status-bar info" id="formatStatus">Ready — paste JSON and click Format</div>
+    </div>
+
+    <!-- VALIDATE PANE -->
+    <div id="pane-validate" class="pane">
+      <div class="panel-header">
+        <div class="panel-title">🔍 Validation Result</div>
+        <div class="panel-actions">
+          <button class="btn primary" onclick="runValidate()">Validate</button>
+        </div>
+      </div>
+      <div class="output-box" id="validateOutput" style="height:380px;"></div>
+      <div class="status-bar info" id="validateStatus">Paste JSON and click Validate</div>
+    </div>
+
+    <!-- JSONPATH PANE -->
+    <div id="pane-path" class="pane">
+      <div class="panel-header">
+        <div class="panel-title">🔍 JSONPath Query</div>
+        <div class="panel-actions">
+          <button class="btn primary" onclick="runPath()">Run Query</button>
+        </div>
+      </div>
+      <div class="path-section">
+        <input class="path-input" id="pathInput" placeholder="e.g. $.store.book[*].title  or  $..price  or  $.users[?(@.age > 18)]" />
+      </div>
+      <div class="output-box" id="pathOutput" style="height:310px;"></div>
+      <div class="status-bar info" id="pathStatus">Enter a JSONPath expression above</div>
+      <div class="tools-bar" style="font-size:0.75rem; color: var(--text2);">
+        Quick: 
+        <button class="btn" onclick="setPath('$.*')" style="font-size:0.72rem;">$.*</button>
+        <button class="btn" onclick="setPath('$..[0]')" style="font-size:0.72rem;">First items</button>
+        <button class="btn" onclick="setPath('$..id')" style="font-size:0.72rem;">All IDs</button>
+        <button class="btn" onclick="setPath('$..name')" style="font-size:0.72rem;">All names</button>
+      </div>
+    </div>
+
+    <!-- DIFF PANE -->
+    <div id="pane-diff" class="pane">
+      <div class="panel-header">
+        <div class="panel-title">↔ JSON Diff</div>
+        <div class="panel-actions">
+          <button class="btn primary" onclick="runDiff()">Compare</button>
+          <button class="btn" onclick="copyOutput()">Copy</button>
+        </div>
+      </div>
+      <div style="padding: 8px 16px; font-size: 0.78rem; color: var(--text2);">Input A = left panel. Paste JSON B below:</div>
+      <div style="padding: 0 16px 8px;">
+        <textarea id="diffB" style="width:100%;height:140px;background:var(--surface2);color:var(--text);font-family:var(--mono);font-size:0.78rem;border:1px solid var(--border);border-radius:8px;padding:10px;outline:none;" placeholder="Paste second JSON here..."></textarea>
+      </div>
+      <div class="output-box" id="diffOutput" style="height:160px;"></div>
+      <div class="status-bar info" id="diffStatus">Paste both JSONs and click Compare</div>
+    </div>
+
+    <!-- SCHEMA PANE -->
+    <div id="pane-schema" class="pane">
+      <div class="panel-header">
+        <div class="panel-title">📋 JSON Schema</div>
+        <div class="panel-actions">
+          <button class="btn primary" onclick="runSchema()">Generate Schema</button>
+          <button class="btn" onclick="copyOutput()">Copy</button>
+        </div>
+      </div>
+      <div class="schema-tip">Generates a JSON Schema (draft-07) from your input JSON structure.</div>
+      <div class="output-box" id="schemaOutput" style="height:330px;"></div>
+      <div class="status-bar info" id="schemaStatus">Paste JSON and click Generate Schema</div>
+    </div>
+
+    <!-- MINIFY PANE -->
+    <div id="pane-minify" class="pane">
+      <div class="panel-header">
+        <div class="panel-title">📦 Minified Output</div>
+        <div class="panel-actions">
+          <button class="btn primary" onclick="runMinify()">Minify</button>
+          <button class="btn" onclick="copyOutput()">Copy</button>
+          <button class="btn" onclick="downloadOutput()">Download</button>
+        </div>
+      </div>
+      <div class="output-box" id="minifyOutput" style="height:380px;"></div>
+      <div class="status-bar info" id="minifyStatus">Paste JSON and click Minify</div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p>JSONCraft — 100% client-side. Your data never leaves your browser. <a href="#">Pro</a> coming soon.</p>
+  <div class="suite">
+    <a href="https://shiffasultan-collab.github.io/gitdigest-static/">GitDigest</a>
+    <a href="https://shiffasultan-collab.github.io/commitcraft/">CommitCraft</a>
+    <a href="https://shiffasultan-collab.github.io/prcraft/">PRCraft</a>
+    <a href="https://shiffasultan-collab.github.io/changelogcraft/">ChangelogCraft</a>
+    <a href="https://shiffasultan-collab.github.io/readmecraft/">ReadmeCraft</a>
+    <a href="https://shiffasultan-collab.github.io/cronhelper/">CronHelper</a>
+    <a href="https://shiffasultan-collab.github.io/envdiff/">EnvDiff</a>
+    <a href="https://shiffasultan-collab.github.io/regexpal/">RegexPal</a>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── HELPERS ────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function getInput() { return document.getElementById('inputArea').value.trim(); }
+
+function getIndent() {
+  const v = document.getElementById('indentSelect').value;
+  return v === 'tab' ? '\t' : parseInt(v);
+}
+
+function syntaxHighlight(json) {
+  return json
+    .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function(match) {
+      let cls = 'tok-num';
+      if (/^"/.test(match)) {
+        cls = /:$/.test(match) ? 'tok-key' : 'tok-str';
+      } else if (/true|false/.test(match)) {
+        cls = 'tok-bool';
+      } else if (/null/.test(match)) {
+        cls = 'tok-null';
+      }
+      return `<span class="${cls}">${match.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>`;
+    });
+}
+
+function countKeys(obj, count = 0) {
+  if (typeof obj === 'object' && obj !== null) {
+    if (Array.isArray(obj)) {
+      obj.forEach(v => count = countKeys(v, count));
+    } else {
+      count += Object.keys(obj).length;
+      Object.values(obj).forEach(v => count = countKeys(v, count));
+    }
+  }
+  return count;
+}
+
+function bytesStr(str) {
+  const b = new Blob([str]).size;
+  if (b < 1024) return b + ' B';
+  if (b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
+  return (b/1024/1024).toFixed(2) + ' MB';
+}
+
+function updateStats() {
+  const raw = document.getElementById('inputArea').value;
+  document.getElementById('sizeVal').textContent = bytesStr(raw);
+  document.getElementById('linesVal').textContent = raw.split('\n').length.toLocaleString();
+  try {
+    const parsed = JSON.parse(raw);
+    document.getElementById('keysVal').textContent = countKeys(parsed).toLocaleString();
+  } catch { document.getElementById('keysVal').textContent = '—'; }
+}
+
+let currentPane = 'format';
+
+function switchTab(name) {
+  currentPane = name;
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    const names = ['format','validate','path','diff','schema','minify'];
+    t.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+  document.getElementById('pane-' + name).classList.add('active');
+}
+
+function onInput() {
+  updateStats();
+  // Auto-run current pane
+  if (currentPane === 'format') runFormat();
+  if (currentPane === 'validate') runValidate();
+  if (currentPane === 'minify') runMinify();
+}
+
+function loadSample() {
+  document.getElementById('inputArea').value = JSON.stringify({
+    "store": {
+      "name": "The Dev Shop",
+      "open": true,
+      "rating": 4.9,
+      "categories": ["tools","books","courses"],
+      "products": [
+        {"id": 1, "title": "JSONCraft Pro", "price": 4.99, "tags": ["json","dev"], "inStock": true},
+        {"id": 2, "title": "CommitCraft Pro", "price": 2.99, "tags": ["git","ai"], "inStock": true},
+        {"id": 3, "title": "CronHelper Pro", "price": 2.99, "tags": ["cron","devops"], "inStock": false}
+      ]
+    },
+    "meta": {"version": "1.0.0", "generated": "2026-03-31", "total": 3}
+  }, null, 2);
+  onInput();
+}
+
+function clearInput() {
+  document.getElementById('inputArea').value = '';
+  onInput();
+}
+
+// ── FORMAT ──────────────────────────────────────────────────────────────────
+function runFormat() {
+  const raw = getInput();
+  const out = document.getElementById('formatOutput');
+  const status = document.getElementById('formatStatus');
+  if (!raw) { out.innerHTML = ''; status.className = 'status-bar info'; status.textContent = 'Ready — paste JSON and click Format'; return; }
+  try {
+    const parsed = JSON.parse(raw);
+    const formatted = JSON.stringify(parsed, null, getIndent());
+    out.innerHTML = syntaxHighlight(formatted.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'));
+    // Re-apply highlight on already-escaped string
+    out.innerHTML = syntaxHighlight(formatted);
+    status.className = 'status-bar ok';
+    status.textContent = `✅ Valid JSON — ${bytesStr(formatted)} formatted`;
+  } catch (e) {
+    out.textContent = raw;
+    status.className = 'status-bar error';
+    status.textContent = '❌ ' + e.message;
+  }
+}
+
+// ── VALIDATE ────────────────────────────────────────────────────────────────
+function runValidate() {
+  const raw = getInput();
+  const out = document.getElementById('validateOutput');
+  const status = document.getElementById('validateStatus');
+  if (!raw) { out.textContent = ''; status.className = 'status-bar info'; status.textContent = 'Paste JSON and click Validate'; return; }
+  try {
+    const parsed = JSON.parse(raw);
+    const stats = analyzeJson(parsed);
+    out.innerHTML = `<span style="color:var(--success);font-size:1.1rem;">✅ Valid JSON</span>\n\n` +
+      `Type: ${stats.rootType}\n` +
+      `Size: ${bytesStr(raw)}\n` +
+      `Top-level keys: ${stats.topKeys}\n` +
+      `Total keys: ${stats.totalKeys}\n` +
+      `Max depth: ${stats.maxDepth}\n` +
+      `Arrays: ${stats.arrays}\n` +
+      `Strings: ${stats.strings}\n` +
+      `Numbers: ${stats.numbers}\n` +
+      `Booleans: ${stats.booleans}\n` +
+      `Nulls: ${stats.nulls}\n\n` +
+      `Structure preview:\n${buildTree(parsed, 0, 4)}`;
+    status.className = 'status-bar ok';
+    status.textContent = `✅ JSON is valid`;
+  } catch (e) {
+    // Try to find error position
+    const msg = e.message;
+    const posMatch = msg.match(/position (\d+)/i);
+    let errInfo = '❌ Invalid JSON\n\n' + msg;
+    if (posMatch) {
+      const pos = parseInt(posMatch[1]);
+      const before = raw.substring(Math.max(0,pos-40), pos);
+      const after = raw.substring(pos, Math.min(raw.length, pos+40));
+      errInfo += `\n\n— Context —\n...${before}◀HERE▶${after}...`;
+    }
+    out.textContent = errInfo;
+    status.className = 'status-bar error';
+    status.textContent = '❌ ' + msg;
+  }
+}
+
+function analyzeJson(obj, depth=0) {
+  // called on root
+  const stats = { rootType:'', topKeys:0, totalKeys:0, maxDepth:0, arrays:0, strings:0, numbers:0, booleans:0, nulls:0 };
+  function walk(v, d) {
+    if (d > stats.maxDepth) stats.maxDepth = d;
+    if (v === null) { stats.nulls++; return; }
+    if (typeof v === 'string') { stats.strings++; return; }
+    if (typeof v === 'number') { stats.numbers++; return; }
+    if (typeof v === 'boolean') { stats.booleans++; return; }
+    if (Array.isArray(v)) { stats.arrays++; v.forEach(i => walk(i, d+1)); return; }
+    if (typeof v === 'object') {
+      const keys = Object.keys(v);
+      stats.totalKeys += keys.length;
+      keys.forEach(k => walk(v[k], d+1));
+    }
+  }
+  if (Array.isArray(obj)) { stats.rootType = `Array [${obj.length} items]`; stats.arrays++; obj.forEach(i => walk(i, 1)); }
+  else if (typeof obj === 'object' && obj !== null) {
+    stats.rootType = 'Object';
+    stats.topKeys = Object.keys(obj).length;
+    stats.totalKeys = stats.topKeys;
+    Object.values(obj).forEach(v => walk(v, 1));
+  } else { stats.rootType = typeof obj; }
+  return stats;
+}
+
+function buildTree(obj, depth, maxDepth) {
+  if (depth >= maxDepth) return '...';
+  const indent = '  '.repeat(depth);
+  if (obj === null) return 'null';
+  if (typeof obj !== 'object') return JSON.stringify(obj);
+  if (Array.isArray(obj)) {
+    if (obj.length === 0) return '[]';
+    const items = obj.slice(0,3).map(i => indent + '  ' + buildTree(i, depth+1, maxDepth));
+    if (obj.length > 3) items.push(indent + '  ...' + (obj.length-3) + ' more');
+    return '[\n' + items.join(',\n') + '\n' + indent + ']';
+  }
+  const keys = Object.keys(obj);
+  if (keys.length === 0) return '{}';
+  const items = keys.slice(0,6).map(k => indent + '  "' + k + '": ' + buildTree(obj[k], depth+1, maxDepth));
+  if (keys.length > 6) items.push(indent + '  ...' + (keys.length-6) + ' more keys');
+  return '{\n' + items.join(',\n') + '\n' + indent + '}';
+}
+
+// ── JSONPATH ────────────────────────────────────────────────────────────────
+// Lightweight JSONPath engine (subset: $, .key, [n], [*], .., [?(@.key op val)])
+function jsonpath(obj, path) {
+  function query(nodes, tokens) {
+    if (tokens.length === 0) return nodes;
+    const [tok, ...rest] = tokens;
+    let next = [];
+    if (tok === '$') return query([obj], rest);
+    if (tok === '*') {
+      nodes.forEach(n => {
+        if (Array.isArray(n)) n.forEach(v => next.push(v));
+        else if (n && typeof n === 'object') Object.values(n).forEach(v => next.push(v));
+      });
+      return query(next, rest);
+    }
+    if (tok === '..') {
+      // Recursive descent
+      function descend(v) {
+        results.push(v);
+        if (Array.isArray(v)) v.forEach(descend);
+        else if (v && typeof v === 'object') Object.values(v).forEach(descend);
+      }
+      // collect all descendants then continue with next token
+      const all = [];
+      nodes.forEach(n => { function rec(v){ all.push(v); if(Array.isArray(v))v.forEach(rec); else if(v&&typeof v==='object')Object.values(v).forEach(rec); } rec(n); });
+      return query(all, rest);
+    }
+    if (/^\[?\d+\]?$/.test(tok)) {
+      const idx = parseInt(tok.replace(/[\[\]]/g,''));
+      nodes.forEach(n => { if (Array.isArray(n) && n[idx] !== undefined) next.push(n[idx]); });
+      return query(next, rest);
+    }
+    if (tok.startsWith('[?(') && tok.endsWith(')]')) {
+      const expr = tok.slice(3, -2).trim(); // @.key op val
+      const m = expr.match(/^@\.(\w+)\s*(==|!=|>|>=|<|<=)\s*(.+)$/);
+      if (m) {
+        const [, key, op, rawVal] = m;
+        let val;
+        try { val = JSON.parse(rawVal); } catch { val = rawVal.replace(/['"]/g,''); }
+        nodes.forEach(n => {
+          const arr = Array.isArray(n) ? n : Object.values(n||{});
+          arr.forEach(item => {
+            if (item && typeof item === 'object') {
+              const v = item[key];
+              let pass = false;
+              if (op === '==') pass = v == val;
+              else if (op === '!=') pass = v != val;
+              else if (op === '>') pass = v > val;
+              else if (op === '>=') pass = v >= val;
+              else if (op === '<') pass = v < val;
+              else if (op === '<=') pass = v <= val;
+              if (pass) next.push(item);
+            }
+          });
+        });
+      }
+      return query(next, rest);
+    }
+    // plain key
+    const key = tok.replace(/^\./, '');
+    nodes.forEach(n => {
+      if (n && typeof n === 'object' && !Array.isArray(n) && n[key] !== undefined) next.push(n[key]);
+      else if (Array.isArray(n)) n.forEach(i => { if(i && typeof i==='object' && i[key]!==undefined) next.push(i[key]); });
+    });
+    return query(next, rest);
+  }
+
+  // Tokenise path
+  const tokens = [];
+  let p = path.trim();
+  if (p.startsWith('$')) { tokens.push('$'); p = p.slice(1); }
+  while (p.length) {
+    if (p.startsWith('..')) { tokens.push('..'); p = p.slice(2); }
+    else if (p.startsWith('.')) {
+      p = p.slice(1);
+      const m = p.match(/^([a-zA-Z_$][\w$]*|\*)/);
+      if (m) { tokens.push(m[1]); p = p.slice(m[1].length); }
+    } else if (p.startsWith('[?(')) {
+      const end = p.indexOf(')]');
+      if (end >= 0) { tokens.push(p.slice(0,end+2)); p = p.slice(end+2); }
+      else break;
+    } else if (p.startsWith('[')) {
+      const end = p.indexOf(']');
+      if (end >= 0) { tokens.push(p.slice(1,end)); p = p.slice(end+1); }
+      else break;
+    } else break;
+  }
+  return query([obj], tokens);
+}
+
+function runPath() {
+  const raw = getInput();
+  const path = document.getElementById('pathInput').value.trim();
+  const out = document.getElementById('pathOutput');
+  const status = document.getElementById('pathStatus');
+  if (!raw) { status.className='status-bar error'; status.textContent='Paste JSON first'; return; }
+  if (!path) { status.className='status-bar error'; status.textContent='Enter a JSONPath expression'; return; }
+  try {
+    const parsed = JSON.parse(raw);
+    const results = jsonpath(parsed, path);
+    if (results.length === 0) {
+      out.textContent = '(no matches)';
+      status.className = 'status-bar warn';
+      status.textContent = `⚠️ No matches for: ${path}`;
+    } else {
+      out.textContent = JSON.stringify(results, null, 2);
+      status.className = 'status-bar ok';
+      status.textContent = `✅ ${results.length} match${results.length!==1?'es':''} for: ${path}`;
+    }
+  } catch(e) {
+    out.textContent = '';
+    status.className='status-bar error';
+    status.textContent='❌ ' + e.message;
+  }
+}
+
+function setPath(p) {
+  document.getElementById('pathInput').value = p;
+  runPath();
+}
+
+// ── DIFF ────────────────────────────────────────────────────────────────────
+function runDiff() {
+  const rawA = getInput();
+  const rawB = document.getElementById('diffB').value.trim();
+  const out = document.getElementById('diffOutput');
+  const status = document.getElementById('diffStatus');
+  try {
+    const a = JSON.parse(rawA);
+    const b = JSON.parse(rawB);
+    const diffs = [];
+    function diff(objA, objB, path) {
+      const keysA = Object.keys(objA||{});
+      const keysB = Object.keys(objB||{});
+      const all = new Set([...keysA, ...keysB]);
+      all.forEach(k => {
+        const kp = path ? path + '.' + k : k;
+        if (!(k in (objA||{}))) diffs.push({type:'added', path:kp, val:objB[k]});
+        else if (!(k in (objB||{}))) diffs.push({type:'removed', path:kp, val:objA[k]});
+        else if (JSON.stringify(objA[k]) !== JSON.stringify(objB[k])) {
+          if (typeof objA[k] === 'object' && objA[k] !== null && typeof objB[k] === 'object' && objB[k] !== null) {
+            diff(objA[k], objB[k], kp);
+          } else {
+            diffs.push({type:'changed', path:kp, from:objA[k], to:objB[k]});
+          }
+        }
+      });
+    }
+    diff(a, b, '');
+    if (diffs.length === 0) {
+      out.textContent = '✅ JSONs are identical';
+      status.className = 'status-bar ok'; status.textContent = '✅ No differences found';
+    } else {
+      let text = `Found ${diffs.length} difference${diffs.length!==1?'s':''}:\n\n`;
+      diffs.forEach(d => {
+        if (d.type==='added') text += `+ ${d.path}: ${JSON.stringify(d.val)}\n`;
+        else if (d.type==='removed') text += `- ${d.path}: ${JSON.stringify(d.val)}\n`;
+        else text += `~ ${d.path}: ${JSON.stringify(d.from)} → ${JSON.stringify(d.to)}\n`;
+      });
+      out.textContent = text;
+      status.className = 'status-bar warn'; status.textContent = `⚠️ ${diffs.length} difference${diffs.length!==1?'s':''} found`;
+    }
+  } catch(e) {
+    out.textContent = '';
+    status.className='status-bar error'; status.textContent='❌ ' + e.message;
+  }
+}
+
+// ── SCHEMA ──────────────────────────────────────────────────────────────────
+function inferSchema(val) {
+  if (val === null) return {type:'null'};
+  if (typeof val === 'boolean') return {type:'boolean'};
+  if (typeof val === 'number') return Number.isInteger(val) ? {type:'integer'} : {type:'number'};
+  if (typeof val === 'string') return {type:'string'};
+  if (Array.isArray(val)) {
+    if (val.length === 0) return {type:'array'};
+    return {type:'array', items: inferSchema(val[0])};
+  }
+  if (typeof val === 'object') {
+    const props = {};
+    Object.keys(val).forEach(k => { props[k] = inferSchema(val[k]); });
+    return {type:'object', properties:props, required:Object.keys(val)};
+  }
+  return {};
+}
+
+function runSchema() {
+  const raw = getInput();
+  const out = document.getElementById('schemaOutput');
+  const status = document.getElementById('schemaStatus');
+  try {
+    const parsed = JSON.parse(raw);
+    const schema = {"$schema":"http://json-schema.org/draft-07/schema#", ...inferSchema(parsed)};
+    out.textContent = JSON.stringify(schema, null, 2);
+    status.className = 'status-bar ok'; status.textContent = '✅ Schema generated';
+  } catch(e) {
+    out.textContent = '';
+    status.className='status-bar error'; status.textContent='❌ ' + e.message;
+  }
+}
+
+// ── MINIFY ──────────────────────────────────────────────────────────────────
+function runMinify() {
+  const raw = getInput();
+  const out = document.getElementById('minifyOutput');
+  const status = document.getElementById('minifyStatus');
+  if (!raw) { out.textContent=''; status.className='status-bar info'; status.textContent='Paste JSON and click Minify'; return; }
+  try {
+    const parsed = JSON.parse(raw);
+    const minified = JSON.stringify(parsed);
+    out.textContent = minified;
+    const pct = Math.round((1 - minified.length/raw.length)*100);
+    status.className = 'status-bar ok'; status.textContent = `✅ Minified — ${bytesStr(minified)} (saved ${pct}%)`;
+  } catch(e) {
+    out.textContent=''; status.className='status-bar error'; status.textContent='❌ ' + e.message;
+  }
+}
+
+// ── COPY / DOWNLOAD ──────────────────────────────────────────────────────────
+function getOutputText() {
+  const paneMap = {format:'formatOutput',validate:'validateOutput',path:'pathOutput',diff:'diffOutput',schema:'schemaOutput',minify:'minifyOutput'};
+  const el = document.getElementById(paneMap[currentPane]);
+  return el ? el.textContent : '';
+}
+
+function copyOutput() {
+  const text = getOutputText();
+  if (!text) { showToast('Nothing to copy'); return; }
+  navigator.clipboard.writeText(text).then(() => showToast('Copied!')).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    showToast('Copied!');
+  });
+}
+
+function downloadOutput() {
+  const text = getOutputText();
+  if (!text) { showToast('Nothing to download'); return; }
+  const blob = new Blob([text], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = currentPane === 'minify' ? 'minified.json' : 'formatted.json';
+  a.click();
+  showToast('Downloaded!');
+}
+
+// ── INIT ────────────────────────────────────────────────────────────────────
+loadSample();
+</script>
+</body>
+</html>
